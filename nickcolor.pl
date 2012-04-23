@@ -1,15 +1,15 @@
 use strict;
 use Irssi 20020101.0250 ();
 use vars qw($VERSION %IRSSI); 
-$VERSION = "1.1";
+$VERSION = "1.2";
 %IRSSI = (
-    authors     => "Timo Sirainen, Ian Peters",
-    contact	=> "tss\@iki.fi", 
+    authors     => "Timo Sirainen, Ian Peters, modified by Daniele Sluijters, Edwin \"Dutchy\" Smulders",
+    contact	=> "tss\@iki.fi, mail\@dutchy.org", 
     name        => "Nick Color",
     description => "assign a different color for each nick",
     license	=> "Public Domain",
-    url		=> "http://irssi.org/",
-    changed	=> "2009-02-20T00:14+0100"
+    url		=> "https://github.com/Dutchy-/irssi-nickcolor",
+    changed	=> "2012-04-23T15:17+0100"
 );
 
 # hm.. i should make it possible to use the existing one..
@@ -98,12 +98,31 @@ sub sig_public {
   if (!$color) {
     $color = $session_colors{$nick};
   }
-
+  
   # Let's assign this nick a color
   if (!$color) {
     $color = simple_hash $nick;
-    $session_colors{$nick} = $color;
-  }
+    # We don't want people with the same nick length to have the same color 
+    my %used;
+    foreach my $c (@colors) {
+        $used{$c} = 0;
+    }
+    # Count colors for this specific nick length
+    while ( my ($saved_nick, $saved_color) = each(%session_colors)) {
+      if (length($saved_nick) == length($nick)) {
+        # Length is equal, add one
+        $used{$saved_color} += 1;
+      }
+    }
+    # Check if the color we want is available
+    if ( $used{$color} == 0 ) {
+      $session_colors{$nick} = $color ;
+    } else {
+      # Pick the _least_ used color
+      $color = (sort {$used{$a} cmp $used{$b} } keys %used)[0];
+      $session_colors{$nick} = $color;
+    }
+  } 
 
   $color = "0".$color if ($color < 10);
   $server->command('/^format pubmsg {pubmsgnick $2 {pubnick '.chr(3).$color.'$0}}$1');
